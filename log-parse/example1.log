@@ -1,0 +1,9 @@
+src/tests/integration/test_cli.py::test_cli_show_printers_snapshot 
+src/tests/integration/test_integration.py::test_exec_smir[Ref-weirdRefs-haskell] 
+src/tests/integration/test_integration.py::test_prove_rs[assert_eq] 
+src/tests/integration/test_integration.py::test_schema_parse[rvalueaggregate] 
+[gw3] [  0%] PASSED src/tests/integration/test_integration.py::test_schema_parse[rvalueaggregate] 
+src/tests/integration/test_integration.py::test_schema_parse[statementassign1] 
+[gw3] [  1%] PASSED src/tests/integration/test_integration.py::test_schema_parse[statementassign1] 
+src/tests/integration/test_integration.py::test_schema_parse[statementassign2] 
+[gw3] [  1%] PASSED src/tests/integration/test_integration.py::test_schema_parse[statementassign2]
