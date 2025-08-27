@@ -1,0 +1,17 @@
+name: awkward-greeter-test
+version: 0.1.0.0
+dependencies:
+  - base >= 4.7 && < 5
+  - awkward-greeter
+  - tasty
+  - tasty-hunit
+library:
+  source-dirs: src
+tests:
+  awkward-greeter-test:
+    main: Main.hs
+    source-dirs: test
+    dependencies:
+      - tasty
+      - tasty-hunit
+      - awkward-greeter

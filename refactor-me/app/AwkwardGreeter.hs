@@ -1,25 +1,18 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Main where
+module Main (main, mkPhrases, en, de) where -- export for testing
 
 import Control.Concurrent (threadDelay)
 import System.IO.Unsafe
 import Data.IORef
 import Options.Applicative
 
-{-# NOINLINE theLang #-}
-theLang :: IORef Language
-theLang = unsafePerformIO $ newIORef (language "xy")
-
-{-# NOINLINE getLang #-}
-getLang :: Language
-getLang = unsafePerformIO $ readIORef theLang
 
 main :: IO ()
 main = do
   (args, lang) <- execParser opts
-  writeIORef theLang (language lang)
-  main' args
+  let langVal = language lang -- eliminate global variable, pass as argument
+  main' langVal args -- pass Language explicitly
 
 opts = info p fullDesc
   where
@@ -27,30 +20,31 @@ opts = info p fullDesc
         <$> many (argument str (metavar "NAME"))
         <*> strOption (long "language" <> metavar "LANGUAGE" <> value "en")
 
-main' :: [String] -> IO ()
-main' args = do
-  let phrases = mkPhrases args
-  runPhrases phrases
+main' :: Language -> [String] -> IO ()
+main' lang args = do
+  let phrases = mkPhrases lang args -- pass Language explicitly
+  runPhrases lang phrases -- pass Language explicitly
 
-runPhrases :: [String] -> IO ()
-runPhrases [] = pure ()
-runPhrases (x:rest) = putStrLn x >> threadDelay 1000000 >> runPhrases rest
-  where Language{..} = getLang
+runPhrases :: Language -> [String] -> IO ()
+runPhrases _ [] = pure ()
+runPhrases lang (x:rest) = putStrLn x >> threadDelay 1000000 >> runPhrases lang rest
+  where putStrLn = languagePutStrLn lang -- use putStrLn from Language
 
-mkPhrases :: [String] -> [String]
-mkPhrases names
+mkPhrases :: Language -> [String] -> [String]
+mkPhrases lang names
   | null names      = [ unwords [hello, world], phrase, bye ]
   | [name] <- names = [ unwords [hello, name] , phrase, unwords  [bye, name]]
-  | otherwise       = greetMany names
-    where Language{..} = getLang
+  | otherwise       = greetMany lang names
+  where Language{..} = lang -- use RecordWildcards for fields
 
-greetMany :: [String] -> [String]
-greetMany names =
+greetMany :: Language -> [String] -> [String]
+greetMany lang names =
   [ unwords [hello, some] , phrase, unwords  [bye, everyone]]
   where
     some | length names > 3 = everyone
          | otherwise        = foldr (\n acc -> n ++ ',':acc) (last names) (init names)
-    Language{..} = getLang
+    Language{..} = lang -- use RecordWildcards for fields
+
 
 en = Language
   { hello    = "Hello"
@@ -58,13 +52,14 @@ en = Language
   , phrase   = "Sorry, gotta go"
   , bye      = "Bye"
   , everyone = "everyone"
-  , putStrLn = Prelude.putStrLn . ("So... " ++)
+  , languagePutStrLn = Prelude.putStrLn . ("So... " ++)
   }
 
 data Language = Language { hello, world, phrase, bye, everyone :: String
-                         , putStrLn :: String -> IO () }
+                         , languagePutStrLn :: String -> IO () } -- renamed field for clarity
 
 de = Language "Hallo" "Welt" "Sehr erfreut!" "Auf Wiedersehen" "Leute" Prelude.putStrLn
+
 
 language :: String -> Language
 language = maybe en id . flip lookup langs
