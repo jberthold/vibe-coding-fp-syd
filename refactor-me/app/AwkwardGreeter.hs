@@ -1,25 +1,19 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Main where
+module Main (main, mkPhrases, en, de) where -- export for testing
 
 import Control.Concurrent (threadDelay)
 import System.IO.Unsafe
 import Data.IORef
 import Options.Applicative
+import Control.Monad.Reader
 
-{-# NOINLINE theLang #-}
-theLang :: IORef Language
-theLang = unsafePerformIO $ newIORef (language "xy")
-
-{-# NOINLINE getLang #-}
-getLang :: Language
-getLang = unsafePerformIO $ readIORef theLang
 
 main :: IO ()
 main = do
   (args, lang) <- execParser opts
-  writeIORef theLang (language lang)
-  main' args
+  let langVal = language lang
+  runReaderT (main' args) langVal -- run the ReaderT with Language
 
 opts = info p fullDesc
   where
@@ -27,22 +21,26 @@ opts = info p fullDesc
         <$> many (argument str (metavar "NAME"))
         <*> strOption (long "language" <> metavar "LANGUAGE" <> value "en")
 
-main' :: [String] -> IO ()
+main' :: [String] -> ReaderT Language IO ()
 main' args = do
-  let phrases = mkPhrases args
+  phrases <- mkPhrases args
   runPhrases phrases
 
-runPhrases :: [String] -> IO ()
+runPhrases :: [String] -> ReaderT Language IO ()
 runPhrases [] = pure ()
-runPhrases (x:rest) = putStrLn x >> threadDelay 1000000 >> runPhrases rest
-  where Language{..} = getLang
+runPhrases (x:rest) = do
+  lang <- ask
+  liftIO $ languagePutStrLn lang x
+  liftIO $ threadDelay 1000000
+  runPhrases rest
 
-mkPhrases :: [String] -> [String]
-mkPhrases names
-  | null names      = [ unwords [hello, world], phrase, bye ]
-  | [name] <- names = [ unwords [hello, name] , phrase, unwords  [bye, name]]
-  | otherwise       = greetMany names
-    where Language{..} = getLang
+mkPhrases :: [String] -> ReaderT Language IO [String]
+mkPhrases names = do
+  Language{..} <- ask
+  pure $ case names of
+    []        -> [ unwords [hello, world], phrase, bye ]
+    [name]    -> [ unwords [hello, name] , phrase, unwords  [bye, name]]
+    _         -> greetMany names
 
 greetMany :: [String] -> [String]
 greetMany names =
@@ -50,7 +48,8 @@ greetMany names =
   where
     some | length names > 3 = everyone
          | otherwise        = foldr (\n acc -> n ++ ',':acc) (last names) (init names)
-    Language{..} = getLang
+    Language{..} = en -- dummy, will be replaced by Reader context
+
 
 en = Language
   { hello    = "Hello"
@@ -58,13 +57,14 @@ en = Language
   , phrase   = "Sorry, gotta go"
   , bye      = "Bye"
   , everyone = "everyone"
-  , putStrLn = Prelude.putStrLn . ("So... " ++)
+  , languagePutStrLn = Prelude.putStrLn . ("So... " ++)
   }
 
 data Language = Language { hello, world, phrase, bye, everyone :: String
-                         , putStrLn :: String -> IO () }
+                         , languagePutStrLn :: String -> IO () } -- renamed field for clarity
 
 de = Language "Hallo" "Welt" "Sehr erfreut!" "Auf Wiedersehen" "Leute" Prelude.putStrLn
+
 
 language :: String -> Language
 language = maybe en id . flip lookup langs
