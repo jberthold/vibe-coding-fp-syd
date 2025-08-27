@@ -1,7 +1,7 @@
 resolver: lts-22.21
 packages:
 # - sink-node-graph
-# - log-parse
+- log-parse
 - refactor-me
 
 system-ghc: true
