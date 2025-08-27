@@ -1,6 +1,6 @@
 resolver: lts-22.21
 packages:
-# - sink-node-graph
+- sink-node-graph
 # - log-parse
 - refactor-me
 
